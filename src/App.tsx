@@ -22,7 +22,7 @@ function App() {
     loadGoogleAuth();
   }, []);
 
-  const handleLoginSuccess = (userData: any, token: string) => {
+  const handleLoginSuccess = (userData: any, _token: string) => {
     setUser(userData);
     setIsAuthenticated(true);
   };
