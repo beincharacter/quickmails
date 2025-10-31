@@ -83,13 +83,23 @@ router.post('/', async (req: AuthRequest, res: Response) => {
         ? parseInt(delayBetweenEmails) * 1000 // Convert seconds to milliseconds
         : undefined,
       dailySendLimit: dailySendLimit ? parseInt(dailySendLimit) : undefined,
-      status: 'draft',
+      status: sendType === 'scheduled' ? 'scheduled' : 'draft',
     });
 
     // If instant send, schedule emails immediately
     if (sendType === 'instant') {
       try {
         await scheduleCampaignEmails(campaign._id.toString());
+      } catch (error: any) {
+        console.error('Failed to schedule campaign emails:', error);
+        campaign.status = 'failed';
+        await campaign.save();
+      }
+    } else if (sendType === 'scheduled') {
+      // For scheduled campaigns, schedule emails for the future date
+      try {
+        await scheduleCampaignEmails(campaign._id.toString());
+        console.log(`✅ Campaign scheduled for ${scheduledAt}`);
       } catch (error: any) {
         console.error('Failed to schedule campaign emails:', error);
         campaign.status = 'failed';

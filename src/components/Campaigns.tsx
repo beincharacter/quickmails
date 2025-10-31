@@ -55,6 +55,21 @@ export const Campaigns = () => {
       return;
     }
 
+    // Validate scheduled date/time if scheduled send type
+    if (formData.sendType === 'scheduled') {
+      if (!formData.scheduledAt) {
+        alert('Please select a date and time for scheduled sending');
+        return;
+      }
+      
+      const scheduledDate = new Date(formData.scheduledAt);
+      const now = new Date();
+      if (scheduledDate <= now) {
+        alert('Scheduled date and time must be in the future');
+        return;
+      }
+    }
+
     // Get selected record indices (or all if none selected)
     const selectedIds = Object.keys(selectedRecords).filter((id) => selectedRecords[id]);
     const recordIdsToUse = selectedIds.length > 0 
@@ -68,7 +83,11 @@ export const Campaigns = () => {
       return;
     }
 
-    if (!confirm(`This will send emails to ${recipientCount} recipient${recipientCount === 1 ? '' : 's'}. Continue?`)) {
+    const sendAction = formData.sendType === 'scheduled' 
+      ? `schedule emails for ${new Date(formData.scheduledAt).toLocaleString()}`
+      : `send emails to ${recipientCount} recipient${recipientCount === 1 ? '' : 's'}`;
+
+    if (!confirm(`This will ${sendAction}. Continue?`)) {
       return;
     }
 
@@ -76,7 +95,7 @@ export const Campaigns = () => {
       const token = getAccessToken();
       if (!token) return;
 
-      // Create campaign and send immediately
+      // Create campaign (instant or scheduled)
       await apiClient.post(
         '/campaigns',
         {
@@ -84,7 +103,8 @@ export const Campaigns = () => {
           templateId: formData.templateId,
           datasetId: formData.datasetId,
           selectedRecordIds: recordIdsToUse,
-          sendType: 'instant', // Always send instantly for this flow
+          sendType: formData.sendType,
+          scheduledAt: formData.sendType === 'scheduled' ? formData.scheduledAt : undefined,
           delayBetweenEmails: formData.delayBetweenEmails ? parseInt(formData.delayBetweenEmails) : 0,
           dailySendLimit: formData.dailySendLimit ? parseInt(formData.dailySendLimit) : undefined,
         },
@@ -106,7 +126,12 @@ export const Campaigns = () => {
       setPreviewData(null);
       setFullDataset(null);
       loadData();
-      alert(`✅ Campaign created and started!\n\n📧 Sending emails to ${recipientCount} recipient${recipientCount === 1 ? '' : 's'}.\n\nYou can monitor progress in the campaigns list.`);
+      if (formData.sendType === 'scheduled') {
+        const scheduledDate = new Date(formData.scheduledAt).toLocaleString();
+        alert(`✅ Campaign created and scheduled!\n\n📅 Emails scheduled for: ${scheduledDate}\n📧 Will send to ${recipientCount} recipient${recipientCount === 1 ? '' : 's'}.\n\nYou can monitor progress in the campaigns list.`);
+      } else {
+        alert(`✅ Campaign created and started!\n\n📧 Sending emails to ${recipientCount} recipient${recipientCount === 1 ? '' : 's'}.\n\nYou can monitor progress in the campaigns list.`);
+      }
     } catch (error: any) {
       alert(error.message || 'Failed to send emails');
     }
@@ -315,9 +340,32 @@ export const Campaigns = () => {
                       <p className="text-lg font-semibold text-red-600">{campaign.failedEmails}</p>
                     </div>
                   </div>
-                  {campaign.scheduledAt && (
-                    <div className="mt-4 text-sm text-gray-600">
-                      Scheduled for: {new Date(campaign.scheduledAt).toLocaleString()}
+                  {campaign.sendType === 'scheduled' && campaign.scheduledAt && (
+                    <div className="mt-4 p-3 bg-blue-50 rounded-md border border-blue-200">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">📅</span>
+                        <div>
+                          <p className="text-xs font-medium text-blue-900">Scheduled Campaign</p>
+                          <p className="text-sm text-blue-700">
+                            {new Date(campaign.scheduledAt).toLocaleString()}
+                          </p>
+                          {(() => {
+                            const scheduledDate = new Date(campaign.scheduledAt);
+                            const now = new Date();
+                            const timeDiff = scheduledDate.getTime() - now.getTime();
+                            if (timeDiff > 0) {
+                              const hoursUntil = Math.floor(timeDiff / (1000 * 60 * 60));
+                              const minutesUntil = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+                              return (
+                                <p className="text-xs text-blue-600 mt-1">
+                                  Starts in {hoursUntil}h {minutesUntil}m
+                                </p>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -489,42 +537,120 @@ export const Campaigns = () => {
                 </div>
               )}
 
-              {/* Advanced Options */}
-              <div className="mb-4 border-t border-gray-200 pt-4">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">Advanced Options (Optional):</h3>
-                
-                <div className="mb-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Delay Between Emails (seconds)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={formData.delayBetweenEmails}
-                    onChange={(e) => setFormData({ ...formData, delayBetweenEmails: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="e.g., 60 (1 minute delay between emails)"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Recommended: 60-300 seconds to avoid spam filters
-                  </p>
-                </div>
+              {/* Send Type Selection */}
+              {formData.templateId && formData.datasetId && previewData && (
+                <div className="mb-4 border-t border-gray-200 pt-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">When to Send:</h3>
+                  
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Send Type</label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="sendType"
+                          value="instant"
+                          checked={formData.sendType === 'instant'}
+                          onChange={(e) => setFormData({ ...formData, sendType: e.target.value as 'instant' | 'scheduled', scheduledAt: '' })}
+                          className="w-4 h-4 text-indigo-600"
+                        />
+                        <span className="text-sm text-gray-700">Send Immediately</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="sendType"
+                          value="scheduled"
+                          checked={formData.sendType === 'scheduled'}
+                          onChange={(e) => setFormData({ ...formData, sendType: e.target.value as 'instant' | 'scheduled' })}
+                          className="w-4 h-4 text-indigo-600"
+                        />
+                        <span className="text-sm text-gray-700">Schedule for Later</span>
+                      </label>
+                    </div>
+                  </div>
 
-                <div className="mb-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Daily Send Limit</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={formData.dailySendLimit}
-                    onChange={(e) => setFormData({ ...formData, dailySendLimit: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="e.g., 50 emails per day"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Maximum emails to send per day (for compliance)
-                  </p>
+                  {/* Scheduled Date/Time Picker */}
+                  {formData.sendType === 'scheduled' && (
+                    <div className="mb-4 p-4 bg-blue-50 rounded-md border border-blue-200">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Schedule Date & Time
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={formData.scheduledAt}
+                        onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
+                        min={new Date().toISOString().slice(0, 16)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        required={formData.sendType === 'scheduled'}
+                      />
+                      <p className="text-xs text-gray-600 mt-2">
+                        💡 Select a future date and time. Emails will be sent starting at this time.
+                      </p>
+                      {formData.scheduledAt && (() => {
+                        const scheduledDate = new Date(formData.scheduledAt);
+                        const now = new Date();
+                        const timeDiff = scheduledDate.getTime() - now.getTime();
+                        const hoursUntil = Math.floor(timeDiff / (1000 * 60 * 60));
+                        const minutesUntil = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+                        
+                        if (timeDiff <= 0) {
+                          return (
+                            <p className="text-xs text-red-600 mt-2">
+                              ⚠️ Selected time is in the past. Please choose a future time.
+                            </p>
+                          );
+                        }
+                        
+                        return (
+                          <p className="text-xs text-green-700 mt-2">
+                            ✅ Scheduled for {scheduledDate.toLocaleString()} ({hoursUntil}h {minutesUntil}m from now)
+                          </p>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
+
+              {/* Advanced Options */}
+              {formData.templateId && formData.datasetId && previewData && (
+                <div className="mb-4 border-t border-gray-200 pt-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Advanced Options (Optional):</h3>
+                  
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Delay Between Emails (seconds)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.delayBetweenEmails}
+                      onChange={(e) => setFormData({ ...formData, delayBetweenEmails: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="e.g., 60 (1 minute delay between emails)"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Recommended: 60-300 seconds to avoid spam filters
+                    </p>
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Daily Send Limit</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={formData.dailySendLimit}
+                      onChange={(e) => setFormData({ ...formData, dailySendLimit: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="e.g., 50 emails per day"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Maximum emails to send per day (for compliance)
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Send Button */}
               {formData.templateId && formData.datasetId && previewData && (
@@ -554,10 +680,10 @@ export const Campaigns = () => {
                   <button
                     type="button"
                     onClick={handleSendEmails}
-                    disabled={!formData.name}
+                    disabled={!formData.name || (formData.sendType === 'scheduled' && !formData.scheduledAt)}
                     className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
                   >
-                    ✉️ Send Emails Now
+                    {formData.sendType === 'scheduled' ? '📅 Schedule Campaign' : '✉️ Send Emails Now'}
                   </button>
                 </div>
               )}
