@@ -132,19 +132,47 @@ export interface EmailJobData {
 
 // Process template with variables
 export function processTemplate(
-  template: { subject: string; body: string },
+  template: { subject: string; body: string; variables?: string[]; variableMappings?: Record<string, string> },
   record: Record<string, any>
 ): { subject: string; body: string } {
   let processedSubject = template.subject;
   let processedBody = template.body;
 
-  // Replace all placeholders {variable} with record values
-  Object.keys(record).forEach((key) => {
-    const placeholder = new RegExp(`\\{${key}\\}`, 'g');
-    const value = record[key]?.toString() || '';
-    processedSubject = processedSubject.replace(placeholder, value);
-    processedBody = processedBody.replace(placeholder, value);
-  });
+  // Use variable mappings if available, otherwise use record keys directly
+  if (template.variableMappings && template.variables) {
+    // Use mappings: template variable -> dataset field label
+    template.variables.forEach((variable) => {
+      const fieldLabel = template.variableMappings![variable];
+      if (fieldLabel && record[fieldLabel] !== undefined) {
+        const placeholder = new RegExp(`\\{${variable}\\}`, 'g');
+        const value = record[fieldLabel]?.toString() || '';
+        processedSubject = processedSubject.replace(placeholder, value);
+        processedBody = processedBody.replace(placeholder, value);
+      }
+    });
+  } else if (template.variables) {
+    // Auto-map: try to match variable name to record field (case-insensitive)
+    template.variables.forEach((variable) => {
+      // Find matching field in record (case-insensitive)
+      const matchingKey = Object.keys(record).find(
+        (key) => key.toLowerCase() === variable.toLowerCase()
+      );
+      if (matchingKey && record[matchingKey] !== undefined) {
+        const placeholder = new RegExp(`\\{${variable}\\}`, 'g');
+        const value = record[matchingKey]?.toString() || '';
+        processedSubject = processedSubject.replace(placeholder, value);
+        processedBody = processedBody.replace(placeholder, value);
+      }
+    });
+  } else {
+    // Fallback: replace using record keys directly
+    Object.keys(record).forEach((key) => {
+      const placeholder = new RegExp(`\\{${key}\\}`, 'g');
+      const value = record[key]?.toString() || '';
+      processedSubject = processedSubject.replace(placeholder, value);
+      processedBody = processedBody.replace(placeholder, value);
+    });
+  }
 
   return { subject: processedSubject, body: processedBody };
 }
@@ -194,7 +222,15 @@ export async function scheduleCampaignEmails(campaignId: string): Promise<void> 
     }
 
     // Process template with record data
-    const { subject, body } = processTemplate(template, record);
+    const { subject, body } = processTemplate(
+      {
+        subject: template.subject,
+        body: template.body,
+        variables: template.variables,
+        variableMappings: template.variableMappings,
+      },
+      record
+    );
 
     // Create email log
     const emailLog = await EmailLog.create({

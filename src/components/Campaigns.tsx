@@ -20,6 +20,9 @@ export const Campaigns = () => {
     dailySendLimit: '',
   });
   const [selectedRecords, setSelectedRecords] = useState<Record<string, boolean>>({});
+  const [previewData, setPreviewData] = useState<{ subject: string; body: string } | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [fullDataset, setFullDataset] = useState<Dataset | null>(null);
 
   useEffect(() => {
     loadData();
@@ -46,21 +49,43 @@ export const Campaigns = () => {
     }
   };
 
-  const handleCreateCampaign = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendEmails = async () => {
+    if (!formData.name || !formData.templateId || !formData.datasetId || !fullDataset) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    // Get selected record indices (or all if none selected)
+    const selectedIds = Object.keys(selectedRecords).filter((id) => selectedRecords[id]);
+    const recordIdsToUse = selectedIds.length > 0 
+      ? selectedIds 
+      : fullDataset.records?.map((_, idx) => idx.toString()) || [];
+    
+    const recipientCount = recordIdsToUse.length;
+
+    if (recipientCount === 0) {
+      alert('Please select at least one record to send emails to');
+      return;
+    }
+
+    if (!confirm(`This will send emails to ${recipientCount} recipient${recipientCount === 1 ? '' : 's'}. Continue?`)) {
+      return;
+    }
+
     try {
       const token = getAccessToken();
       if (!token) return;
 
-      const selectedIds = Object.keys(selectedRecords).filter((id) => selectedRecords[id]);
-
+      // Create campaign and send immediately
       await apiClient.post(
         '/campaigns',
         {
-          ...formData,
-          selectedRecordIds: selectedIds,
-          scheduledAt: formData.sendType === 'scheduled' ? formData.scheduledAt : undefined,
-          delayBetweenEmails: formData.delayBetweenEmails ? parseInt(formData.delayBetweenEmails) : undefined,
+          name: formData.name,
+          templateId: formData.templateId,
+          datasetId: formData.datasetId,
+          selectedRecordIds: recordIdsToUse,
+          sendType: 'instant', // Always send instantly for this flow
+          delayBetweenEmails: formData.delayBetweenEmails ? parseInt(formData.delayBetweenEmails) : 0,
           dailySendLimit: formData.dailySendLimit ? parseInt(formData.dailySendLimit) : undefined,
         },
         token
@@ -78,10 +103,18 @@ export const Campaigns = () => {
         dailySendLimit: '',
       });
       setSelectedRecords({});
+      setPreviewData(null);
+      setFullDataset(null);
       loadData();
+      alert(`✅ Campaign created and started!\n\n📧 Sending emails to ${recipientCount} recipient${recipientCount === 1 ? '' : 's'}.\n\nYou can monitor progress in the campaigns list.`);
     } catch (error: any) {
-      alert(error.message || 'Failed to create campaign');
+      alert(error.message || 'Failed to send emails');
     }
+  };
+
+  const handleCreateCampaign = async (e: React.FormEvent) => {
+    e.preventDefault();
+    // This form is now used for step-by-step flow, submission handled by handleSendEmails
   };
 
   const handleStartCampaign = async (id: string) => {
@@ -116,26 +149,67 @@ export const Campaigns = () => {
       if (!token) return;
 
       const dataset = await apiClient.get<Dataset>(`/datasets/${datasetId}`, token);
+      setFullDataset(dataset);
       
-      // Initialize selected records
+      // Initialize selected records (all selected by default)
       const initialSelected: Record<string, boolean> = {};
       dataset.records.forEach((_, index) => {
-        initialSelected[index.toString()] = false;
+        initialSelected[index.toString()] = true;
       });
       setSelectedRecords(initialSelected);
+      
+      // Auto-load preview if template is also selected
+      if (formData.templateId && dataset.records.length > 0) {
+        loadPreview(dataset, formData.templateId);
+      }
     } catch (error: any) {
       console.error('Failed to load dataset records:', error);
+    }
+  };
+
+  const loadPreview = async (dataset: Dataset, templateId: string) => {
+    if (!dataset || !dataset.records || dataset.records.length === 0) return;
+    
+    setLoadingPreview(true);
+    try {
+      const token = getAccessToken();
+      if (!token) return;
+
+      // Get preview using first record from selected dataset
+      const preview = await apiClient.post<{ subject: string; body: string }>(
+        `/templates/${templateId}/preview`,
+        { 
+          recordIndex: 0,
+          datasetId: dataset._id, // Use the selected dataset for preview
+        },
+        token
+      );
+      setPreviewData(preview);
+    } catch (error: any) {
+      console.error('Failed to load preview:', error);
+      setPreviewData(null);
+    } finally {
+      setLoadingPreview(false);
     }
   };
 
   useEffect(() => {
     if (formData.datasetId) {
       loadDatasetRecords(formData.datasetId);
+    } else {
+      setFullDataset(null);
+      setPreviewData(null);
     }
   }, [formData.datasetId]);
 
-  const selectedDataset = datasets.find((d) => d._id === formData.datasetId);
-  const selectedTemplate = templates.find((t) => t._id === formData.templateId);
+  // Load preview when both template and dataset are selected
+  useEffect(() => {
+    if (formData.templateId && formData.datasetId && fullDataset && fullDataset.records && fullDataset.records.length > 0) {
+      loadPreview(fullDataset, formData.templateId);
+    } else if (!formData.templateId || !formData.datasetId) {
+      setPreviewData(null);
+    }
+  }, [formData.templateId, formData.datasetId, fullDataset?._id]);
 
   if (loading) {
     return <div className="text-center py-12">Loading campaigns...</div>;
@@ -257,7 +331,7 @@ export const Campaigns = () => {
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">Create Campaign</h2>
+            <h2 className="text-xl font-bold mb-4">Send Email Campaign</h2>
             <form onSubmit={handleCreateCampaign}>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Campaign Name</label>
@@ -267,80 +341,21 @@ export const Campaigns = () => {
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   required
+                  placeholder="e.g., Q1 Outreach Campaign"
                 />
               </div>
 
+              {/* Step 1: Select Template */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Dataset</label>
-                <select
-                  value={formData.datasetId}
-                  onChange={(e) => setFormData({ ...formData, datasetId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  required
-                >
-                  <option value="">Select a dataset</option>
-                  {datasets.map((dataset) => (
-                    <option key={dataset._id} value={dataset._id}>
-                      {dataset.name} ({dataset.records.length} records)
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {selectedDataset && (
-                <div className="mb-4 p-4 bg-gray-50 rounded-md max-h-48 overflow-y-auto">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Select Records (leave empty to select all)
-                  </label>
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={Object.values(selectedRecords).every((v) => v)}
-                        onChange={(e) => {
-                          const allSelected = e.target.checked;
-                          const newSelected: Record<string, boolean> = {};
-                          selectedDataset.records.forEach((_, index) => {
-                            newSelected[index.toString()] = allSelected;
-                          });
-                          setSelectedRecords(newSelected);
-                        }}
-                        className="rounded"
-                      />
-                      <span className="text-sm text-gray-700">Select All</span>
-                    </label>
-                    {selectedDataset.records.slice(0, 50).map((record, index) => {
-                      const emailField = selectedDataset.fields.find((f) => f.label.toLowerCase().includes('email'))?.label || selectedDataset.fields[0]?.label;
-                      const email = record[emailField]?.toString() || `Record ${index + 1}`;
-                      
-                      return (
-                        <label key={index} className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={selectedRecords[index.toString()] || false}
-                            onChange={(e) =>
-                              setSelectedRecords({ ...selectedRecords, [index.toString()]: e.target.checked })
-                            }
-                            className="rounded"
-                          />
-                          <span className="text-sm text-gray-700">{email}</span>
-                        </label>
-                      );
-                    })}
-                    {selectedDataset.records.length > 50 && (
-                      <p className="text-xs text-gray-500 mt-2">
-                        Showing first 50 of {selectedDataset.records.length} records
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Template</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Step 1: Select Template
+                </label>
                 <select
                   value={formData.templateId}
-                  onChange={(e) => setFormData({ ...formData, templateId: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, templateId: e.target.value });
+                    setPreviewData(null); // Clear preview when template changes
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   required
                 >
@@ -353,76 +368,207 @@ export const Campaigns = () => {
                 </select>
               </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Send Type</label>
-                <select
-                  value={formData.sendType}
-                  onChange={(e) => setFormData({ ...formData, sendType: e.target.value as 'instant' | 'scheduled' })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  required
-                >
-                  <option value="instant">Send Instantly</option>
-                  <option value="scheduled">Schedule for Later</option>
-                </select>
-              </div>
-
-              {formData.sendType === 'scheduled' && (
+              {/* Step 2: Select Dataset */}
+              {formData.templateId && (
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Scheduled Date & Time</label>
-                  <input
-                    type="datetime-local"
-                    value={formData.scheduledAt}
-                    onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Step 2: Select Dataset
+                  </label>
+                  <select
+                    value={formData.datasetId}
+                    onChange={(e) => setFormData({ ...formData, datasetId: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    required={formData.sendType === 'scheduled'}
-                  />
+                    required
+                  >
+                    <option value="">Select a dataset</option>
+                    {datasets.map((dataset) => (
+                      <option key={dataset._id} value={dataset._id}>
+                        {dataset.name} ({dataset.records?.length || 0} records)
+                      </option>
+                    ))}
+                  </select>
                 </div>
               )}
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Delay Between Emails (seconds)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={formData.delayBetweenEmails}
-                  onChange={(e) => setFormData({ ...formData, delayBetweenEmails: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="e.g., 60 (1 minute delay)"
-                />
+              {/* Preview Section */}
+              {formData.templateId && formData.datasetId && fullDataset && (
+                <div className="mb-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Preview (First Record):</h3>
+                  {loadingPreview ? (
+                    <div className="p-4 bg-gray-50 rounded-md text-center">
+                      <p className="text-gray-600">Loading preview...</p>
+                    </div>
+                  ) : previewData ? (
+                    <div className="border border-gray-200 rounded-md p-4 bg-gray-50">
+                      <div className="mb-3">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Subject:</label>
+                        <p className="text-sm text-gray-900 font-medium">{previewData.subject}</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Body:</label>
+                        <div className="text-sm text-gray-900 whitespace-pre-wrap bg-white p-3 rounded border border-gray-200">
+                          {previewData.body}
+                        </div>
+                      </div>
+                      <div className="mt-3 text-xs text-gray-600 border-t border-gray-200 pt-3">
+                        <p className="font-medium">📊 Preview Info:</p>
+                        <p>This preview uses the first record from "<strong>{fullDataset.name}</strong>"</p>
+                        {(() => {
+                          const selectedCount = Object.keys(selectedRecords).filter(id => selectedRecords[id]).length;
+                          const totalCount = fullDataset.records?.length || 0;
+                          return (
+                            <>
+                              <p className="mt-1">
+                                📧 Will send to <strong>{selectedCount || totalCount} recipient{(selectedCount || totalCount) === 1 ? '' : 's'}</strong>
+                                {selectedCount > 0 && selectedCount < totalCount && ` (${selectedCount} of ${totalCount} selected)`}
+                              </p>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-yellow-50 rounded-md border border-yellow-200">
+                      <p className="text-sm text-yellow-800">
+                        ⚠️ Could not load preview. Make sure the template variables match dataset fields.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Record Selection (Optional) */}
+              {fullDataset && fullDataset.records && fullDataset.records.length > 0 && (
+                <div className="mb-4 p-4 bg-gray-50 rounded-md max-h-48 overflow-y-auto">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Records (leave all selected to send to all)
+                  </label>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={Object.values(selectedRecords).every((v) => v)}
+                        onChange={(e) => {
+                          const allSelected = e.target.checked;
+                          const newSelected: Record<string, boolean> = {};
+                          fullDataset.records?.forEach((_, index) => {
+                            newSelected[index.toString()] = allSelected;
+                          });
+                          setSelectedRecords(newSelected);
+                        }}
+                        className="rounded"
+                      />
+                      <span className="text-sm text-gray-700 font-medium">
+                        Select All ({fullDataset.records.length} records)
+                      </span>
+                    </label>
+                    {fullDataset.records.slice(0, 50).map((record, index) => {
+                      const emailField = fullDataset.fields?.find((f) => f.label.toLowerCase().includes('email'))?.label || fullDataset.fields?.[0]?.label;
+                      const email = emailField ? record[emailField]?.toString() : `Record ${index + 1}`;
+                      
+                      return (
+                        <label key={index} className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedRecords[index.toString()] || false}
+                            onChange={(e) =>
+                              setSelectedRecords({ ...selectedRecords, [index.toString()]: e.target.checked })
+                            }
+                            className="rounded"
+                          />
+                          <span className="text-sm text-gray-700">{email || `Record ${index + 1}`}</span>
+                        </label>
+                      );
+                    })}
+                    {fullDataset.records.length > 50 && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        Showing first 50 of {fullDataset.records.length} records
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Advanced Options */}
+              <div className="mb-4 border-t border-gray-200 pt-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Advanced Options (Optional):</h3>
+                
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Delay Between Emails (seconds)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.delayBetweenEmails}
+                    onChange={(e) => setFormData({ ...formData, delayBetweenEmails: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="e.g., 60 (1 minute delay between emails)"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Recommended: 60-300 seconds to avoid spam filters
+                  </p>
+                </div>
+
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Daily Send Limit</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={formData.dailySendLimit}
+                    onChange={(e) => setFormData({ ...formData, dailySendLimit: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="e.g., 50 emails per day"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Maximum emails to send per day (for compliance)
+                  </p>
+                </div>
               </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Daily Send Limit</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={formData.dailySendLimit}
-                  onChange={(e) => setFormData({ ...formData, dailySendLimit: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="e.g., 50 emails per day"
-                />
-              </div>
+              {/* Send Button */}
+              {formData.templateId && formData.datasetId && previewData && (
+                <div className="flex gap-3 mt-6 pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowModal(false);
+                      setSelectedRecords({});
+                      setPreviewData(null);
+                      setFullDataset(null);
+                      setFormData({
+                        name: '',
+                        datasetId: '',
+                        templateId: '',
+                        selectedRecordIds: [],
+                        sendType: 'instant',
+                        scheduledAt: '',
+                        delayBetweenEmails: '',
+                        dailySendLimit: '',
+                      });
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSendEmails}
+                    disabled={!formData.name}
+                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                  >
+                    ✉️ Send Emails Now
+                  </button>
+                </div>
+              )}
 
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    setSelectedRecords({});
-                  }}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-                >
-                  Create Campaign
-                </button>
-              </div>
+              {formData.templateId && formData.datasetId && !previewData && !loadingPreview && (
+                <div className="mt-4 p-3 bg-yellow-50 rounded-md border border-yellow-200">
+                  <p className="text-sm text-yellow-800">
+                    ⚠️ Cannot send: Preview failed. Please check that template variables match dataset fields.
+                  </p>
+                </div>
+              )}
             </form>
           </div>
         </div>

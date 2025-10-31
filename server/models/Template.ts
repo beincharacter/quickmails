@@ -6,6 +6,8 @@ export interface ITemplate extends Document {
   subject: string;
   body: string;
   variables: string[]; // Extracted variables from placeholders
+  datasetId?: mongoose.Types.ObjectId; // Optional: bind template to a dataset
+  variableMappings?: Record<string, string>; // Map template variables to dataset field labels
   createdAt: Date;
   updatedAt: Date;
 }
@@ -17,6 +19,8 @@ const TemplateSchema = new Schema<ITemplate>(
     subject: { type: String, required: true },
     body: { type: String, required: true },
     variables: [{ type: String }],
+    datasetId: { type: Schema.Types.ObjectId, ref: 'Dataset' },
+    variableMappings: { type: Schema.Types.Mixed }, // e.g., { "name": "name", "company": "company" }
   },
   { timestamps: true }
 );

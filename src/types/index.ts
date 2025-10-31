@@ -37,6 +37,8 @@ export interface Template {
   subject: string;
   body: string;
   variables: string[];
+  datasetId?: string | Dataset;
+  variableMappings?: Record<string, string>; // Map template variables to dataset field labels
   createdAt: string;
   updatedAt: string;
 }

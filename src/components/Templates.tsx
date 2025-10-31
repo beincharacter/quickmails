@@ -5,16 +5,23 @@ import { Template, Dataset } from '../types';
 
 export const Templates = () => {
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewData, setPreviewData] = useState<{ subject: string; body: string } | null>(null);
   const [sampleData, setSampleData] = useState<Record<string, string>>({});
-  const [formData, setFormData] = useState({ name: '', subject: '', body: '' });
+  const [formData, setFormData] = useState({ 
+    name: '', 
+    subject: '', 
+    body: '', 
+    datasetId: '' as string | undefined,
+  });
 
   useEffect(() => {
     loadTemplates();
+    loadDatasets();
   }, []);
 
   const loadTemplates = async () => {
@@ -31,15 +38,30 @@ export const Templates = () => {
     }
   };
 
+  const loadDatasets = async () => {
+    try {
+      const token = getAccessToken();
+      if (!token) return;
+
+      const data = await apiClient.get<Dataset[]>('/datasets', token);
+      setDatasets(data);
+    } catch (error: any) {
+      console.error('Failed to load datasets:', error);
+    }
+  };
+
   const handleCreateTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const token = getAccessToken();
       if (!token) return;
 
-      await apiClient.post('/templates', formData, token);
+      await apiClient.post('/templates', {
+        ...formData,
+        datasetId: formData.datasetId || undefined,
+      }, token);
       setShowModal(false);
-      setFormData({ name: '', subject: '', body: '' });
+      setFormData({ name: '', subject: '', body: '', datasetId: undefined });
       loadTemplates();
     } catch (error: any) {
       alert(error.message || 'Failed to create template');
@@ -53,9 +75,12 @@ export const Templates = () => {
       const token = getAccessToken();
       if (!token) return;
 
-      await apiClient.put(`/templates/${selectedTemplate._id}`, formData, token);
+      await apiClient.put(`/templates/${selectedTemplate._id}`, {
+        ...formData,
+        datasetId: formData.datasetId || undefined,
+      }, token);
       setShowModal(false);
-      setFormData({ name: '', subject: '', body: '' });
+      setFormData({ name: '', subject: '', body: '', datasetId: undefined });
       loadTemplates();
       setSelectedTemplate(null);
     } catch (error: any) {
@@ -80,19 +105,23 @@ export const Templates = () => {
     }
   };
 
-  const handlePreview = async () => {
+  const handlePreview = async (recordIndex?: number) => {
     if (!selectedTemplate) return;
 
     try {
       const token = getAccessToken();
       if (!token) return;
 
-      const data = await apiClient.post<{ subject: string; body: string }>(
+      // If template is bound to dataset and no sample data provided, use first record
+      const previewData = await apiClient.post<{ subject: string; body: string }>(
         `/templates/${selectedTemplate._id}/preview`,
-        { sampleData },
+        { 
+          sampleData: Object.keys(sampleData).length > 0 ? sampleData : undefined,
+          recordIndex: recordIndex !== undefined ? recordIndex : (selectedTemplate.datasetId ? 0 : undefined),
+        },
         token
       );
-      setPreviewData(data);
+      setPreviewData(previewData);
       setShowPreviewModal(true);
     } catch (error: any) {
       alert(error.message || 'Failed to preview template');
@@ -117,6 +146,7 @@ export const Templates = () => {
       name: template.name,
       subject: template.subject,
       body: template.body,
+      datasetId: typeof template.datasetId === 'object' ? template.datasetId._id : template.datasetId || '',
     });
     setShowModal(true);
   };
@@ -135,7 +165,7 @@ export const Templates = () => {
         <button
           onClick={() => {
             setSelectedTemplate(null);
-            setFormData({ name: '', subject: '', body: '' });
+            setFormData({ name: '', subject: '', body: '', datasetId: '' });
             setShowModal(true);
           }}
           className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
@@ -178,6 +208,21 @@ export const Templates = () => {
                   </div>
                 </div>
                 <div className="p-6">
+                  {/* Show bound dataset */}
+                  {template.datasetId && (
+                    <div className="mb-4 p-3 bg-green-50 rounded-md border border-green-200">
+                      <p className="text-xs font-medium text-green-800 mb-1">📋 Bound to Dataset:</p>
+                      <p className="text-sm text-green-700">
+                        {typeof template.datasetId === 'object' ? template.datasetId.name : 'Dataset'}
+                      </p>
+                      {template.variableMappings && (
+                        <p className="text-xs text-green-600 mt-1">
+                          {Object.keys(template.variableMappings).length} variables mapped
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  
                   <div className="mb-4">
                     <h4 className="text-sm font-medium text-gray-700 mb-2">Variables:</h4>
                     <div className="flex flex-wrap gap-2">
@@ -259,13 +304,73 @@ export const Templates = () => {
                   Use {'{'}{'variable'}{'}'} for placeholders (e.g., {'{'}{'name'}{'}'}, {'{'}{'email'}{'}'})
                 </p>
               </div>
+              
+              {/* Dataset Binding */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Bind to Dataset (Optional)
+                </label>
+                <select
+                  value={formData.datasetId || ''}
+                  onChange={(e) => {
+                    const datasetId = e.target.value || undefined;
+                    setFormData({ ...formData, datasetId: datasetId || '' });
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">No dataset (use manual variables)</option>
+                  {datasets.map((dataset) => (
+                    <option key={dataset._id} value={dataset._id}>
+                      {dataset.name} ({dataset.fields?.length || 0} fields)
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Bind template to a dataset to auto-map variables to dataset fields
+                </p>
+              </div>
+
+              {/* Variable Mappings Display */}
+              {formData.datasetId && (() => {
+                const selectedDataset = datasets.find(d => d._id === formData.datasetId);
+                const vars = extractVariables(formData.subject + ' ' + formData.body);
+                
+                if (selectedDataset && selectedDataset.fields && vars.length > 0) {
+                  return (
+                    <div className="mb-4 p-4 bg-blue-50 rounded-md border border-blue-200">
+                      <h4 className="text-sm font-medium text-blue-900 mb-2">Variable Mappings:</h4>
+                      <div className="space-y-2">
+                        {vars.map((variable) => {
+                          const matchingField = selectedDataset.fields?.find(
+                            f => f.label.toLowerCase() === variable.toLowerCase()
+                          );
+                          return (
+                            <div key={variable} className="flex items-center gap-2 text-sm">
+                              <span className="font-mono text-blue-700">{'{'}{variable}{'}'}</span>
+                              <span className="text-blue-600">→</span>
+                              <span className={matchingField ? 'text-green-700 font-medium' : 'text-red-600'}>
+                                {matchingField ? matchingField.label : 'No matching field'}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {vars.every(v => selectedDataset.fields?.some(f => f.label.toLowerCase() === v.toLowerCase())) && (
+                        <p className="text-xs text-green-700 mt-2">✅ All variables match dataset fields</p>
+                      )}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
               <div className="flex gap-3">
                 <button
                   type="button"
                   onClick={() => {
                     setShowModal(false);
                     setSelectedTemplate(null);
-                    setFormData({ name: '', subject: '', body: '' });
+                    setFormData({ name: '', subject: '', body: '', datasetId: '' });
                   }}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
                 >
@@ -348,6 +453,32 @@ export const Templates = () => {
                 <p className="text-gray-700">{selectedTemplate.body}</p>
               </div>
             </div>
+            {/* Show dataset binding info */}
+            {selectedTemplate.datasetId && (
+              <div className="p-4 bg-green-50 rounded-md border border-green-200">
+                <h3 className="font-semibold text-green-900 mb-2">📋 Bound to Dataset:</h3>
+                <p className="text-green-700 mb-2">
+                  {typeof selectedTemplate.datasetId === 'object' 
+                    ? selectedTemplate.datasetId.name 
+                    : datasets.find(d => d._id === selectedTemplate.datasetId)?.name || 'Dataset'}
+                </p>
+                {selectedTemplate.variableMappings && (
+                  <div className="mt-2">
+                    <p className="text-xs font-medium text-green-800 mb-1">Variable Mappings:</p>
+                    <div className="space-y-1">
+                      {Object.entries(selectedTemplate.variableMappings).map(([variable, field]) => (
+                        <div key={variable} className="text-xs text-green-700">
+                          <span className="font-mono">{'{'}{variable}{'}'}</span>
+                          <span className="mx-2">→</span>
+                          <span className="font-medium">{field}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
             <div>
               <h3 className="font-semibold text-gray-900 mb-2">Variables:</h3>
               <div className="flex flex-wrap gap-2">
@@ -362,27 +493,43 @@ export const Templates = () => {
               </div>
             </div>
             <div className="mt-6">
-              <h3 className="font-semibold text-gray-900 mb-2">Preview with Sample Data:</h3>
-              <div className="space-y-2 mb-4">
-                {selectedTemplate.variables.map((variable) => (
-                  <div key={variable}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{variable}:</label>
-                    <input
-                      type="text"
-                      value={sampleData[variable] || ''}
-                      onChange={(e) => setSampleData({ ...sampleData, [variable]: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      placeholder={`Sample ${variable}`}
-                    />
+              <h3 className="font-semibold text-gray-900 mb-2">Preview:</h3>
+              {selectedTemplate.datasetId ? (
+                <div className="mb-4">
+                  <p className="text-sm text-gray-600 mb-2">
+                    This template is bound to a dataset. Preview will use dataset records automatically.
+                  </p>
+                  <button
+                    onClick={() => handlePreview(0)}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                  >
+                    Preview with First Record
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2 mb-4">
+                    {selectedTemplate.variables.map((variable) => (
+                      <div key={variable}>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{variable}:</label>
+                        <input
+                          type="text"
+                          value={sampleData[variable] || ''}
+                          onChange={(e) => setSampleData({ ...sampleData, [variable]: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          placeholder={`Sample ${variable}`}
+                        />
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <button
-                onClick={handlePreview}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-              >
-                Preview Template
-              </button>
+                  <button
+                    onClick={() => handlePreview()}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                  >
+                    Preview Template
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
