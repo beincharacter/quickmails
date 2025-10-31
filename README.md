@@ -1,44 +1,247 @@
-# Email Sender App
+# Cold Email Sender SaaS Application
 
-A minimal React app that allows users to sign in with Google OAuth and send emails using their Gmail account.
+A full-stack cold email sender SaaS application built with React, TypeScript, Express, MongoDB, and BullMQ. Users can log in with Google OAuth, manage datasets of prospects, create email templates with placeholders, and run campaigns with instant or scheduled email sending.
 
 ## Features
 
-- Google OAuth authentication
-- Send emails via Gmail API
-- Clean and minimal UI
+### Authentication
+- ✅ Google OAuth authentication with Gmail API access
+- ✅ Secure token storage (access & refresh tokens)
+- ✅ Token refresh handling
+
+### Dataset Management
+- ✅ Create custom datasets with dynamic fields
+- ✅ Add custom columns dynamically (name, email, company, position, etc.)
+- ✅ Table view with filtering and selection
+- ✅ Add/remove records
+
+### Email Templates
+- ✅ Create multiple named templates
+- ✅ Subject line and body with placeholder support (e.g., `{name}`, `{company}`)
+- ✅ Automatic variable extraction
+- ✅ Template preview with sample data
+
+### Campaign Management
+- ✅ Create campaigns by selecting dataset and template
+- ✅ Select specific prospects or use all records
+- ✅ Instant or scheduled email sending
+- ✅ Configurable delay between emails
+- ✅ Daily send limits for compliance
+
+### Email Sending
+- ✅ Gmail API integration
+- ✅ Template personalization
+- ✅ Background job queue (BullMQ + Redis)
+- ✅ Email status tracking (sent, scheduled, failed)
+- ✅ Error logging and retry handling
+
+### Dashboard & Analytics
+- ✅ Total emails sent, scheduled, failed
+- ✅ Campaign statistics
+- ✅ Recent activity tracking
+- ✅ Dataset and template counts
+
+## Tech Stack
+
+**Frontend:**
+- React 18 + TypeScript
+- Vite
+- Tailwind CSS
+- React Router
+
+**Backend:**
+- Node.js + Express
+- TypeScript
+- MongoDB (Mongoose)
+- BullMQ + Redis (job queue)
+
+**APIs:**
+- Google OAuth2
+- Gmail API
 
 ## Setup
 
-1. Install dependencies:
+### Prerequisites
+
+1. **Node.js** (v18 or higher)
+2. **MongoDB** (local or MongoDB Atlas)
+3. **Redis** (for job queue)
+4. **Google Cloud Project** with OAuth credentials
+
+### Installation
+
+1. **Install dependencies:**
 ```bash
 npm install
 ```
 
-2. Create a `.env` file in the root directory with your Google OAuth credentials:
-```bash
-cp .env.example .env
-```
-Then edit `.env` and fill in your actual credentials:
-```
-VITE_GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
-VITE_GOOGLE_CLIENT_SECRET=your-google-client-secret
-VITE_GOOGLE_PROJECT_ID=your-google-project-id
+2. **Set up MongoDB:**
+   - Install MongoDB locally or use MongoDB Atlas
+   - Default connection: `mongodb://localhost:27017/email-sender`
+
+3. **Set up Redis:**
+   - Install Redis locally or use a cloud service
+   - Default: `localhost:6379`
+
+4. **Configure Google OAuth:**
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Create a new project or select existing
+   - Enable Gmail API
+   - Create OAuth 2.0 credentials (Web application)
+   - Add authorized JavaScript origins: `http://localhost:5173`
+   - Add authorized redirect URIs: `http://localhost:5173`
+   - Add your email as a test user (OAuth consent screen)
+
+5. **Create environment file:**
+   - Create a `.env` file in the root directory:
+```env
+# Google OAuth Configuration
+GOOGLE_CLIENT_ID=your_google_client_id_here
+GOOGLE_CLIENT_SECRET=your_google_client_secret_here
+GOOGLE_REDIRECT_URI=http://localhost:5173
+GOOGLE_PROJECT_ID=your_project_id_here
+
+# Frontend Environment Variables (for Vite)
+VITE_GOOGLE_CLIENT_ID=your_google_client_id_here
+VITE_GOOGLE_CLIENT_SECRET=your_google_client_secret_here
+VITE_GOOGLE_PROJECT_ID=your_project_id_here
+VITE_API_URL=http://localhost:3001/api
+
+# Backend Environment Variables
+PORT=3001
+FRONTEND_URL=http://localhost:5173
+
+# Database
+MONGODB_URI=mongodb://localhost:27017/email-sender
+
+# Redis Configuration (for BullMQ job queue)
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
 ```
 
-3. Start the development server:
+### Running the Application
+
+1. **Start MongoDB:**
+```bash
+# If installed locally:
+mongod
+```
+
+2. **Start Redis:**
+```bash
+# If installed locally:
+redis-server
+```
+
+3. **Start the backend server:**
+```bash
+npm run dev:server
+# or
+npm run server
+```
+
+4. **Start the frontend development server:**
 ```bash
 npm run dev
 ```
 
-4. Open your browser and navigate to the URL shown in the terminal (typically `http://localhost:5173`)
+5. **Open your browser:**
+   - Frontend: `http://localhost:5173`
+   - Backend API: `http://localhost:3001`
 
 ## Usage
 
-1. Click "Sign in with Google" to authenticate
-2. After signing in, you'll see the email composer
-3. Fill in the recipient, subject, and message
-4. Click "Send Email" to send
+### Getting Started
+
+1. **Sign In:**
+   - Click "Sign in with Google"
+   - Grant Gmail API permissions
+   - You'll be redirected to the dashboard
+
+2. **Create a Dataset:**
+   - Go to "Datasets"
+   - Click "Create Dataset"
+   - Add custom fields (e.g., name, email, company, position)
+   - Add records with data for each field
+
+3. **Create a Template:**
+   - Go to "Templates"
+   - Click "Create Template"
+   - Use placeholders like `{name}`, `{company}`, `{email}` in subject and body
+   - Preview with sample data
+
+4. **Create a Campaign:**
+   - Go to "Campaigns"
+   - Click "Create Campaign"
+   - Select a dataset
+   - Choose specific records or use all
+   - Select a template
+   - Choose instant or scheduled sending
+   - Set delay between emails (optional)
+   - Set daily send limit (optional)
+
+5. **Monitor:**
+   - View dashboard for statistics
+   - Check campaign status
+   - Review email logs
+
+## Project Structure
+
+```
+/
+├── server/                 # Backend code
+│   ├── index.ts           # Express server entry point
+│   ├── config/            # Configuration files
+│   │   └── database.ts    # MongoDB connection
+│   ├── models/            # Mongoose models
+│   │   ├── User.ts
+│   │   ├── Dataset.ts
+│   │   ├── Template.ts
+│   │   ├── Campaign.ts
+│   │   └── EmailLog.ts
+│   ├── routes/            # API routes
+│   │   ├── auth.ts
+│   │   ├── datasets.ts
+│   │   ├── templates.ts
+│   │   ├── campaigns.ts
+│   │   ├── emails.ts
+│   │   └── dashboard.ts
+│   ├── services/          # Business logic
+│   │   ├── gmail.ts      # Gmail API integration
+│   │   └── scheduler.ts  # BullMQ job queue
+│   └── middleware/        # Express middleware
+│       └── auth.ts        # Authentication middleware
+├── src/                   # Frontend code
+│   ├── components/        # React components
+│   │   ├── Login.tsx
+│   │   ├── Layout.tsx
+│   │   ├── Dashboard.tsx
+│   │   ├── Datasets.tsx
+│   │   ├── Templates.tsx
+│   │   └── Campaigns.tsx
+│   ├── config/            # Configuration
+│   │   ├── api.ts         # API client
+│   │   └── oauth.ts       # OAuth config
+│   ├── utils/             # Utilities
+│   │   ├── auth.ts        # Authentication utilities
+│   │   └── email.ts       # Email utilities
+│   └── types/             # TypeScript types
+│       └── index.ts
+└── package.json
+
+## Quick Setup
+
+For detailed setup instructions, see [SETUP.md](./SETUP.md)
+
+**Quick Start:**
+1. Install dependencies: `npm install`
+2. Start MongoDB: `mongod` (or use MongoDB Atlas)
+3. Start Redis: `redis-server` (or use Docker/Redis Cloud)
+4. Create `.env` file (see SETUP.md for template)
+5. Check dependencies: `npm run check-deps`
+6. Start backend: `npm run dev:server`
+7. Start frontend: `npm run dev` (in another terminal)
 
 ## Important Setup: Fix Common OAuth Errors
 
