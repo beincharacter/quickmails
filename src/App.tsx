@@ -22,7 +22,7 @@ function App() {
     loadGoogleAuth();
   }, []);
 
-  const handleLoginSuccess = (userData: any, token: string) => {
+  const handleLoginSuccess = (userData: any, _token: string) => {
     setUser(userData);
     setIsAuthenticated(true);
   };
@@ -34,14 +34,14 @@ function App() {
 
   if (isLoading) {
     return (
-      <div className="loading">
+      <div className="flex items-center justify-center min-h-screen text-white text-lg">
         <p>Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="app">
+    <div className="flex items-center justify-center h-screen p-4">
       {!isAuthenticated ? (
         <Login onLoginSuccess={handleLoginSuccess} />
       ) : (
