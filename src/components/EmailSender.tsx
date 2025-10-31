@@ -37,19 +37,22 @@ export const EmailSender = ({ userEmail, onSignOut }: EmailSenderProps) => {
   };
 
   return (
-    <div className="email-sender-container">
-      <div className="header">
+    <div className="w-full max-w-2xl bg-white rounded-xl p-8 shadow-2xl">
+      <div className="flex justify-between items-center mb-8 pb-5 border-b border-gray-200">
         <div>
-          <h1>Send Email</h1>
-          <p className="user-info">Logged in as: {userEmail}</p>
+          <h1 className="text-gray-800 text-3xl font-semibold mb-1">Send Email</h1>
+          <p className="text-gray-600 text-sm">Logged in as: {userEmail}</p>
         </div>
-        <button onClick={handleSignOut} className="sign-out-button">
+        <button 
+          onClick={handleSignOut} 
+          className="py-2 px-4 bg-red-500 text-white border-none rounded-md text-sm cursor-pointer transition-colors duration-300 hover:bg-red-600"
+        >
           Sign Out
         </button>
       </div>
-      <form onSubmit={handleSubmit} className="email-form">
-        <div className="form-group">
-          <label htmlFor="to">To:</label>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <div className="flex flex-col gap-2">
+          <label htmlFor="to" className="text-gray-800 font-medium text-sm">To:</label>
           <input
             id="to"
             type="email"
@@ -57,10 +60,11 @@ export const EmailSender = ({ userEmail, onSignOut }: EmailSenderProps) => {
             onChange={(e) => setFormData({ ...formData, to: e.target.value })}
             required
             placeholder="recipient@example.com"
+            className="p-3 border border-gray-300 rounded-md text-sm font-inherit transition-colors duration-300 focus:outline-none focus:border-indigo-500"
           />
         </div>
-        <div className="form-group">
-          <label htmlFor="subject">Subject:</label>
+        <div className="flex flex-col gap-2">
+          <label htmlFor="subject" className="text-gray-800 font-medium text-sm">Subject:</label>
           <input
             id="subject"
             type="text"
@@ -68,10 +72,11 @@ export const EmailSender = ({ userEmail, onSignOut }: EmailSenderProps) => {
             onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
             required
             placeholder="Email subject"
+            className="p-3 border border-gray-300 rounded-md text-sm font-inherit transition-colors duration-300 focus:outline-none focus:border-indigo-500"
           />
         </div>
-        <div className="form-group">
-          <label htmlFor="body">Message:</label>
+        <div className="flex flex-col gap-2">
+          <label htmlFor="body" className="text-gray-800 font-medium text-sm">Message:</label>
           <textarea
             id="body"
             value={formData.body}
@@ -79,14 +84,23 @@ export const EmailSender = ({ userEmail, onSignOut }: EmailSenderProps) => {
             required
             rows={10}
             placeholder="Your message here..."
+            className="p-3 border border-gray-300 rounded-md text-sm font-inherit transition-colors duration-300 focus:outline-none focus:border-indigo-500 resize-y"
           />
         </div>
         {message && (
-          <div className={`message ${message.type}`}>
+          <div className={`p-3 rounded-md text-sm ${
+            message.type === 'success' 
+              ? 'bg-green-50 text-green-800' 
+              : 'bg-red-50 text-red-800'
+          }`}>
             {message.text}
           </div>
         )}
-        <button type="submit" disabled={isSending} className="send-button">
+        <button 
+          type="submit" 
+          disabled={isSending} 
+          className="py-3 px-6 bg-indigo-500 text-white border-none rounded-lg text-base font-medium cursor-pointer transition-colors duration-300 hover:bg-indigo-600 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
           {isSending ? 'Sending...' : 'Send Email'}
         </button>
       </form>

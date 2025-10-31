@@ -1,6 +1,7 @@
 {
   "name": "email-sender",
   "version": "1.0.0",
+  "type": "module",
   "description": "Minimal app for Google OAuth login and email sending",
   "scripts": {
     "dev": "vite",
@@ -8,14 +9,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.1.16",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "tailwindcss": "^4.1.16"
   },
   "devDependencies": {
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@vitejs/plugin-react": "^4.0.0",
     "typescript": "^5.0.0",
-    "vite": "^4.3.0"
+    "vite": "^5.2.0"
   }
 }
