@@ -87,6 +87,11 @@ function AppContent() {
     setIsAuthenticated(true);
   };
 
+  const handleSignOut = () => {
+    setUser(null);
+    setIsAuthenticated(false);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -114,7 +119,7 @@ function AppContent() {
         <Route
           path="/*"
           element={
-            <Layout user={user}>
+            <Layout user={user} onSignOut={handleSignOut}>
               <Routes>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/datasets" element={<Datasets />} />

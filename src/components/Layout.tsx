@@ -4,15 +4,21 @@ import { signOut } from '../utils/auth';
 interface LayoutProps {
   children: React.ReactNode;
   user: { name: string; email: string; picture?: string };
+  onSignOut?: () => void;
 }
 
-export const Layout = ({ children, user }: LayoutProps) => {
+export const Layout = ({ children, user, onSignOut }: LayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
 
   const handleSignOut = () => {
     signOut();
-    navigate('/login');
+    // Call parent callback if provided to update auth state
+    if (onSignOut) {
+      onSignOut();
+    }
+    // Navigate to login
+    navigate('/login', { replace: true });
   };
 
   const navItems = [
