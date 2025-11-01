@@ -3,3 +3,11 @@ dist
 .env
 *.log
 .DS_Store
+
+# Client
+client/dist
+client/node_modules
+
+# Server
+server/dist
+server/node_modules

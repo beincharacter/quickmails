@@ -11,8 +11,15 @@ import dashboardRoutes from './routes/dashboard.js';
 import { authMiddleware } from './middleware/auth.js';
 import { initializeScheduler, closeScheduler, getEmailWorker } from './services/scheduler.js';
 import { checkRedisConnection } from './utils/redis.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-dotenv.config();
+// Get the directory name of the current module (server/)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env from root directory (parent of server/)
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 const PORT = process.env.PORT || 3001;

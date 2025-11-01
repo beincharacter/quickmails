@@ -1,11 +1,18 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import { Dataset } from '../server/models/Dataset.js';
-import { Template } from '../server/models/Template.js';
-import { User } from '../server/models/User.js';
-import { connectDB } from '../server/config/database.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { Dataset } from '../models/Dataset.js';
+import { Template } from '../models/Template.js';
+import { User } from '../models/User.js';
+import { connectDB } from '../config/database.js';
 
-dotenv.config();
+// Get the directory name of the current module (server/scripts/)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env from root directory (../../.env)
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 async function seedTestData() {
   try {
