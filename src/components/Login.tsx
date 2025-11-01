@@ -1,23 +1,34 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { signIn } from '../utils/auth';
 
 interface LoginProps {
-  onLoginSuccess: (result: any) => void;
+  onLoginSuccess?: (result: any) => void;
 }
 
 export const Login = ({ onLoginSuccess }: LoginProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Check for error in URL params (from OAuth callback)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorParam = urlParams.get('error');
+    if (errorParam) {
+      setError(decodeURIComponent(errorParam));
+      // Clean up URL
+      window.history.replaceState({}, '', '/login');
+    }
+  }, []);
+
   const handleLogin = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await signIn();
-      onLoginSuccess(result);
+      // Server-side OAuth will redirect, so we don't need to wait for response
+      await signIn();
+      // This redirects, so we'll never reach here
     } catch (err: any) {
       setError(err.message || 'Failed to login');
-    } finally {
       setIsLoading(false);
     }
   };
