@@ -33,7 +33,7 @@ export const authMiddleware = async (
       return;
     }
 
-    req.userId = user._id.toString();
+    req.userId = String(user._id);
     req.user = user;
     next();
   } catch (error) {

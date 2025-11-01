@@ -6,9 +6,12 @@
   "scripts": {
     "dev": "vite",
     "dev:server": "tsx watch server/index.ts",
-    "build": "tsc && vite build",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "tsc && vite build",
+    "build:backend": "tsc -p server/tsconfig.json",
     "preview": "vite preview",
     "server": "tsx server/index.ts",
+    "server:prod": "node server/dist/index.js",
     "check-deps": "node scripts/check-dependencies.js",
     "seed": "tsx scripts/seed-test-data.ts"
   },

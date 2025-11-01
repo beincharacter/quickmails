@@ -89,7 +89,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
     // If instant send, schedule emails immediately
     if (sendType === 'instant') {
       try {
-        await scheduleCampaignEmails(campaign._id.toString());
+        await scheduleCampaignEmails(String(campaign._id));
       } catch (error: any) {
         console.error('Failed to schedule campaign emails:', error);
         campaign.status = 'failed';
@@ -98,7 +98,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
     } else if (sendType === 'scheduled') {
       // For scheduled campaigns, schedule emails for the future date
       try {
-        await scheduleCampaignEmails(campaign._id.toString());
+        await scheduleCampaignEmails(String(campaign._id));
         console.log(`✅ Campaign scheduled for ${scheduledAt}`);
       } catch (error: any) {
         console.error('Failed to schedule campaign emails:', error);
@@ -107,7 +107,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
       }
     }
 
-    const populatedCampaign = await Campaign.findById(campaign._id)
+    const populatedCampaign = await Campaign.findById(String(campaign._id))
       .populate('datasetId', 'name')
       .populate('templateId', 'name');
 
@@ -177,9 +177,9 @@ router.post('/:id/start', async (req: AuthRequest, res: Response) => {
       });
     }
 
-    await scheduleCampaignEmails(campaign._id.toString());
+    await scheduleCampaignEmails(String(campaign._id));
 
-    const updatedCampaign = await Campaign.findById(campaign._id)
+    const updatedCampaign = await Campaign.findById(String(campaign._id))
       .populate('datasetId', 'name')
       .populate('templateId', 'name');
 

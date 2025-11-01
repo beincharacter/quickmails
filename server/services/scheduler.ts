@@ -253,16 +253,16 @@ export async function scheduleCampaignEmails(campaignId: string): Promise<void> 
 
     // Add job to queue
     const jobData: EmailJobData = {
-      userId: campaign.userId.toString(),
-      campaignId: campaign._id.toString(),
+      userId: String(campaign.userId),
+      campaignId: String(campaign._id),
       to: email,
       subject,
       body,
       delay,
       metadata: {
         recordId: i.toString(),
-        datasetId: campaign.datasetId.toString(),
-        templateId: campaign.templateId.toString(),
+        datasetId: String(campaign.datasetId),
+        templateId: String(campaign.templateId),
       },
     };
 

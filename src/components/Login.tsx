@@ -5,7 +5,7 @@ interface LoginProps {
   onLoginSuccess?: (result: any) => void;
 }
 
-export const Login = ({ onLoginSuccess }: LoginProps) => {
+export const Login = ({ onLoginSuccess: _onLoginSuccess }: LoginProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
