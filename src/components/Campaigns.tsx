@@ -593,6 +593,7 @@ export const Campaigns = () => {
                         const timeDiff = scheduledDate.getTime() - now.getTime();
                         const hoursUntil = Math.floor(timeDiff / (1000 * 60 * 60));
                         const minutesUntil = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+                        const daysUntil = Math.floor(hoursUntil / 24);
                         
                         if (timeDiff <= 0) {
                           return (
@@ -602,10 +603,21 @@ export const Campaigns = () => {
                           );
                         }
                         
-                        return (
-                          <p className="text-xs text-green-700 mt-2">
-                            ✅ Scheduled for {scheduledDate.toLocaleString()} ({hoursUntil}h {minutesUntil}m from now)
+                        // Warn if scheduling more than 1 hour in the future (access tokens expire after ~1 hour)
+                        const warningMessage = hoursUntil > 1 ? (
+                          <p className="text-xs text-orange-600 mt-2">
+                            ⚠️ Warning: Access tokens expire after ~1 hour. If scheduling more than 1 hour ahead, 
+                            you may need to re-authenticate before the scheduled time for emails to send successfully.
                           </p>
+                        ) : null;
+                        
+                        return (
+                          <>
+                            <p className="text-xs text-green-700 mt-2">
+                              ✅ Scheduled for {scheduledDate.toLocaleString()} ({daysUntil > 0 ? `${daysUntil}d ` : ''}{hoursUntil % 24}h {minutesUntil}m from now)
+                            </p>
+                            {warningMessage}
+                          </>
                         );
                       })()}
                     </div>

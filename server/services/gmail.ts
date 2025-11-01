@@ -36,18 +36,37 @@ export class GmailService {
 
     // Check if token is expired
     if (user.tokenExpiry && user.tokenExpiry < new Date()) {
-      // Refresh the token
-      const newAccessToken = await this.refreshAccessToken(user.refreshToken);
-      const expiryDate = new Date();
-      expiryDate.setHours(expiryDate.getHours() + 1); // Usually valid for 1 hour
+      // Try to refresh the token if we have a refresh token
+      if (!user.refreshToken || user.refreshToken.trim() === '') {
+        throw new Error(
+          'Access token expired and no refresh token available. ' +
+          'Please re-authenticate your Google account. ' +
+          'Note: Scheduled emails may fail if authentication expires before the scheduled time.'
+        );
+      }
 
-      user.accessToken = newAccessToken;
-      user.tokenExpiry = expiryDate;
-      await user.save();
+      try {
+        const newAccessToken = await this.refreshAccessToken(user.refreshToken);
+        const expiryDate = new Date();
+        expiryDate.setHours(expiryDate.getHours() + 1); // Usually valid for 1 hour
 
-      return newAccessToken;
+        user.accessToken = newAccessToken;
+        user.tokenExpiry = expiryDate;
+        await user.save();
+
+        return newAccessToken;
+      } catch (error: any) {
+        // If refresh fails, provide helpful error message
+        throw new Error(
+          `Failed to refresh access token: ${error.message}. ` +
+          'Please re-authenticate your Google account.'
+        );
+      }
     }
 
+    // Even if not expired, verify the token still works
+    // For now, we'll just return it and let Gmail API tell us if it's invalid
+    
     return user.accessToken;
   }
 
@@ -57,7 +76,14 @@ export class GmailService {
     subject: string,
     body: string
   ): Promise<void> {
-    const accessToken = await this.getValidAccessToken(userId);
+    let accessToken: string;
+    
+    try {
+      accessToken = await this.getValidAccessToken(userId);
+    } catch (error: any) {
+      // If we can't get a valid token, throw a more descriptive error
+      throw new Error(`Authentication failed: ${error.message}. Please re-authenticate your Google account.`);
+    }
     
     // Create email message
     const email = [
@@ -84,12 +110,36 @@ export class GmailService {
     
     const gmailClient = google.gmail({ version: 'v1', auth: oauth2Client });
 
-    await gmailClient.users.messages.send({
-      userId: 'me',
-      requestBody: {
-        raw: encodedEmail,
-      },
-    });
+    try {
+      await gmailClient.users.messages.send({
+        userId: 'me',
+        requestBody: {
+          raw: encodedEmail,
+        },
+      });
+    } catch (error: any) {
+      // Handle Gmail API errors
+      if (error.response?.status === 401) {
+        // Token is invalid, try to refresh once more
+        try {
+          accessToken = await this.getValidAccessToken(userId);
+          oauth2Client.setCredentials({ access_token: accessToken });
+          await gmailClient.users.messages.send({
+            userId: 'me',
+            requestBody: {
+              raw: encodedEmail,
+            },
+          });
+        } catch (retryError: any) {
+          throw new Error(
+            `Gmail authentication error: Token expired and cannot be refreshed. ` +
+            `Please re-authenticate your Google account. Original error: ${error.message}`
+          );
+        }
+      } else {
+        throw error;
+      }
+    }
   }
 }
 

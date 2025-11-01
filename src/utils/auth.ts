@@ -67,7 +67,7 @@ export const signIn = (): Promise<{ accessToken: string; refreshToken: string; u
               userEmail: userInfo?.email,
             });
 
-            const result = await apiClient.post('/auth/store-tokens', {
+            const result = await apiClient.post<{ user: any; accessToken: string }>('/auth/store-tokens', {
               accessToken: response.access_token,
               refreshToken: response.refresh_token || '', // May be empty
               userInfo,
