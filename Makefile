@@ -90,6 +90,21 @@ check-deps:
 	@echo "🔍 Checking dependencies..."
 	@node scripts/check-dependencies.js
 
+check-jobs:
+	@echo "📊 Checking Redis jobs..."
+	@cd server && node scripts/check-redis-jobs.mjs
+
+check-jobs-queue:
+	@echo "📊 Checking Redis jobs (specify queue name)..."
+	@echo "Usage: make check-jobs-queue QUEUE=email-sending"
+	@cd server && node scripts/check-redis-jobs.mjs $(QUEUE)
+
+check-job:
+	@echo "🔍 Checking specific job details..."
+	@echo "Usage: make check-job JOB_ID=34"
+	@echo "   Or: make check-job QUEUE=email-sending JOB_ID=34"
+	@cd server && node scripts/check-redis-jobs.mjs $(or $(QUEUE),email-sending) $(JOB_ID)
+
 clean:
 	@echo "🧹 Cleaning build artifacts..."
 	rm -rf client/dist
