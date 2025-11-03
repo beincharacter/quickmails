@@ -70,31 +70,31 @@ export const Dashboard = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-2">Overview of your email campaigns</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Overview of your email campaigns</p>
         </div>
         <button
           onClick={handleAddTestData}
           disabled={isAddingTestData}
-          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+          className="px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm w-full sm:w-auto"
         >
           {isAddingTestData ? 'Adding...' : '+ Add Test Data'}
         </button>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {statCards.map((card, index) => (
-          <div key={index} className="bg-white rounded-lg shadow p-6">
+          <div key={index} className="bg-white rounded-lg shadow p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">{card.label}</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{card.value}</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">{card.label}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">{card.value}</p>
               </div>
-              <div className={`${card.color} rounded-full p-3 text-2xl`}>
+              <div className={`${card.color} rounded-full p-2 sm:p-3 text-xl sm:text-2xl`}>
                 {card.icon}
               </div>
             </div>
@@ -103,7 +103,7 @@ export const Dashboard = () => {
       </div>
 
       {/* Additional Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-sm font-medium text-gray-600">Total Campaigns</h3>
           <p className="text-2xl font-bold text-gray-900 mt-2">{stats.campaigns.total}</p>
@@ -118,27 +118,27 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Recent Campaigns */}
         <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Recent Campaigns</h2>
+          <div className="p-4 sm:p-6 border-b border-gray-200">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900">Recent Campaigns</h2>
           </div>
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {recentCampaigns.length === 0 ? (
               <p className="text-gray-500 text-sm">No campaigns yet</p>
             ) : (
               <div className="space-y-4">
                 {recentCampaigns.map((campaign) => (
-                  <div key={campaign._id} className="border-b border-gray-100 pb-4 last:border-0">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-medium text-gray-900">{campaign.name}</p>
-                        <p className="text-sm text-gray-600 mt-1">
+                  <div key={campaign._id} className="border-b border-gray-100 pb-3 sm:pb-4 last:border-0">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 text-sm sm:text-base truncate">{campaign.name}</p>
+                        <p className="text-xs sm:text-sm text-gray-600 mt-1 truncate">
                           {typeof campaign.datasetId === 'object' ? campaign.datasetId.name : 'Dataset'}
                         </p>
                       </div>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full flex-shrink-0 ${
                         campaign.status === 'completed' ? 'bg-green-100 text-green-800' :
                         campaign.status === 'sending' ? 'bg-blue-100 text-blue-800' :
                         campaign.status === 'scheduled' ? 'bg-yellow-100 text-yellow-800' :
@@ -159,20 +159,20 @@ export const Dashboard = () => {
 
         {/* Recent Emails */}
         <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Recent Emails</h2>
+          <div className="p-4 sm:p-6 border-b border-gray-200">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900">Recent Emails</h2>
           </div>
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {recentEmails.length === 0 ? (
               <p className="text-gray-500 text-sm">No emails yet</p>
             ) : (
               <div className="space-y-4">
                 {recentEmails.map((email) => (
-                  <div key={email._id} className="border-b border-gray-100 pb-4 last:border-0">
-                    <div className="flex justify-between items-start">
+                  <div key={email._id} className="border-b border-gray-100 pb-3 sm:pb-4 last:border-0">
+                    <div className="flex justify-between items-start gap-2">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{email.to}</p>
-                        <p className="text-sm text-gray-600 truncate mt-1">{email.subject}</p>
+                        <p className="text-xs sm:text-sm font-medium text-gray-900 truncate">{email.to}</p>
+                        <p className="text-xs sm:text-sm text-gray-600 truncate mt-1">{email.subject}</p>
                       </div>
                       <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full flex-shrink-0 ${
                         email.status === 'sent' ? 'bg-green-100 text-green-800' :

@@ -156,11 +156,11 @@ export const Templates = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Templates</h1>
-          <p className="text-gray-600 mt-2">Manage your email templates with placeholders</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Templates</h1>
+          <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Manage your email templates with placeholders</p>
         </div>
         <button
           onClick={() => {
@@ -168,13 +168,13 @@ export const Templates = () => {
             setFormData({ name: '', subject: '', body: '', datasetId: '' });
             setShowModal(true);
           }}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          className="px-3 sm:px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-xs sm:text-sm w-full sm:w-auto"
         >
           + Create Template
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {templates.length === 0 ? (
           <div className="lg:col-span-2 bg-white rounded-lg shadow p-12 text-center">
             <p className="text-gray-500">No templates yet. Create one to get started.</p>
@@ -185,29 +185,29 @@ export const Templates = () => {
             
             return (
               <div key={template._id} className="bg-white rounded-lg shadow">
-                <div className="p-6 border-b border-gray-200">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">{template.name}</h3>
-                      <p className="text-sm text-gray-600 mt-1">{template.subject}</p>
+                <div className="p-4 sm:p-6 border-b border-gray-200">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-start gap-3 sm:gap-2">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">{template.name}</h3>
+                      <p className="text-xs sm:text-sm text-gray-600 mt-1 truncate">{template.subject}</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 w-full sm:w-auto">
                       <button
                         onClick={() => setSelectedTemplate(template)}
-                        className="px-3 py-1 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                        className="flex-1 sm:flex-none px-3 py-1 text-xs sm:text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700"
                       >
                         View
                       </button>
                       <button
                         onClick={() => handleDeleteTemplate(template._id)}
-                        className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                        className="flex-1 sm:flex-none px-3 py-1 text-xs sm:text-sm bg-red-600 text-white rounded hover:bg-red-700"
                       >
                         Delete
                       </button>
                     </div>
                   </div>
                 </div>
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                   {/* Show bound dataset */}
                   {template.datasetId && (
                     <div className="mb-4 p-3 bg-green-50 rounded-md border border-green-200">
@@ -260,8 +260,8 @@ export const Templates = () => {
       {/* Template Modal (Create/Edit) */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg sm:text-xl font-bold mb-4">
               {selectedTemplate ? 'Edit Template' : 'Create Template'}
             </h2>
             <form onSubmit={selectedTemplate ? handleUpdateTemplate : handleCreateTemplate}>
@@ -392,8 +392,8 @@ export const Templates = () => {
       {/* Preview Modal */}
       {showPreviewModal && previewData && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">Template Preview</h2>
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg sm:text-xl font-bold mb-4">Template Preview</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Subject:</label>
@@ -429,15 +429,15 @@ export const Templates = () => {
 
       {/* Selected Template Detail View */}
       {selectedTemplate && !showModal && (
-        <div className="bg-white rounded-lg shadow p-6 mt-6">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">{selectedTemplate.name}</h2>
-              <p className="text-gray-600 mt-1">Created {new Date(selectedTemplate.createdAt).toLocaleDateString()}</p>
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6 mt-4 sm:mt-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-start gap-3 sm:gap-4 mb-4">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{selectedTemplate.name}</h2>
+              <p className="text-xs sm:text-sm text-gray-600 mt-1">Created {new Date(selectedTemplate.createdAt).toLocaleDateString()}</p>
             </div>
             <button
               onClick={() => openEditModal(selectedTemplate)}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              className="px-3 sm:px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-xs sm:text-sm w-full sm:w-auto"
             >
               Edit
             </button>
@@ -449,9 +449,9 @@ export const Templates = () => {
             </div>
             <div>
               <h3 className="font-semibold text-gray-900 mb-2">Body:</h3>
-              <div className="p-4 bg-gray-50 rounded-md whitespace-pre-wrap">
-                <p className="text-gray-700">{selectedTemplate.body}</p>
-              </div>
+                <div className="p-3 sm:p-4 bg-gray-50 rounded-md whitespace-pre-wrap overflow-x-auto">
+                  <p className="text-gray-700 text-sm sm:text-base">{selectedTemplate.body}</p>
+                </div>
             </div>
             {/* Show dataset binding info */}
             {selectedTemplate.datasetId && (
