@@ -43,12 +43,14 @@ export async function initializeScheduler(): Promise<void> {
 }
 
 // Get email queue (lazy initialization)
-export async function getEmailQueue(): Promise<Queue> {
+export async function getEmailQueue(): Promise<Queue | null> {
   if (!emailQueue) {
-    await initializeScheduler();
-  }
-  if (!emailQueue) {
-    throw new Error('Email queue not initialized. Redis may not be available.');
+    try {
+      await initializeScheduler();
+    } catch (error: any) {
+      console.error('Failed to initialize email queue:', error.message);
+      return null;
+    }
   }
   return emailQueue;
 }
@@ -267,6 +269,14 @@ export async function scheduleCampaignEmails(campaignId: string): Promise<void> 
     };
 
     const queue = await getEmailQueue();
+    
+    if (!queue) {
+      // Redis not available - mark email as failed
+      emailLog.status = 'failed';
+      emailLog.error = 'Redis queue not available. Please configure Redis to enable email sending.';
+      await emailLog.save();
+      continue;
+    }
     
     if (campaign.sendType === 'scheduled' && campaign.scheduledAt) {
       // Schedule for specific time

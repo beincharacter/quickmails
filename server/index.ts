@@ -71,36 +71,49 @@ app.use('/api/dashboard', authMiddleware, dashboardRoutes);
 // Startup validation and initialization
 async function startServer() {
   try {
-    // Check Redis connection first
-    console.log('🔍 Checking Redis connection...');
-    const redisConnected = await checkRedisConnection();
-    if (!redisConnected) {
-      console.error('❌ Redis is not available. The email scheduler requires Redis.');
-      console.error('   Please start Redis before running the server:');
-      console.error('   - Local: redis-server');
-      console.error('   - Docker: docker run -d -p 6379:6379 redis');
-      console.error('   - Or update REDIS_HOST and REDIS_PORT in your .env file');
-      process.exit(1);
-    }
-
-    // Connect to MongoDB
+    // Connect to MongoDB first (required)
     console.log('🔍 Connecting to MongoDB...');
     await connectDB();
 
-    // Initialize email scheduler
-    console.log('🔍 Initializing email scheduler...');
-    await initializeScheduler();
+    // Check Redis connection (optional - server can run without it, but email sending won't work)
+    console.log('🔍 Checking Redis connection...');
+    let redisConnected = false;
+    let schedulerInitialized = false;
+    
+    try {
+      redisConnected = await checkRedisConnection();
+      if (redisConnected) {
+        // Initialize email scheduler
+        console.log('🔍 Initializing email scheduler...');
+        await initializeScheduler();
+        schedulerInitialized = true;
+      } else {
+        console.warn('⚠️  Redis is not available. Email scheduling will be disabled.');
+        console.warn('   To enable email sending, configure Redis:');
+        console.warn('   - Set REDIS_URL (for Upstash: redis://default:password@host:port)');
+        console.warn('   - Or set REDIS_HOST, REDIS_PORT, and REDIS_PASSWORD');
+      }
+    } catch (redisError: any) {
+      console.warn('⚠️  Redis connection failed:', redisError.message);
+      console.warn('   Server will start without email scheduling capabilities.');
+      console.warn('   Configure Redis to enable email sending functionality.');
+    }
 
-    // Start HTTP server
-    app.listen(PORT, () => {
+    // Start HTTP server (always bind to PORT, even if Redis fails)
+    app.listen(PORT, '0.0.0.0', () => {
       console.log('');
       console.log('═══════════════════════════════════════════════════');
       console.log('🚀 Email Sender SaaS Server Started Successfully!');
       console.log('═══════════════════════════════════════════════════');
-      console.log(`📡 Server: http://localhost:${PORT}`);
-      console.log(`📧 Email Queue: Ready`);
+      console.log(`📡 Server: http://0.0.0.0:${PORT}`);
       console.log(`💾 Database: Connected`);
-      console.log(`🔄 Redis: Connected`);
+      if (schedulerInitialized) {
+        console.log(`📧 Email Queue: Ready`);
+        console.log(`🔄 Redis: Connected`);
+      } else {
+        console.log(`📧 Email Queue: Disabled (Redis not available)`);
+        console.log(`🔄 Redis: Not connected`);
+      }
       console.log('═══════════════════════════════════════════════════');
       console.log('');
     });
@@ -110,9 +123,9 @@ async function startServer() {
     console.error('   Error:', error.message);
     console.error('');
     console.error('Troubleshooting:');
-    console.error('   1. Ensure MongoDB is running');
-    console.error('   2. Ensure Redis is running');
-    console.error('   3. Check your .env file configuration');
+    console.error('   1. Ensure MongoDB is running and MONGODB_URI is correct');
+    console.error('   2. Redis is optional but required for email sending');
+    console.error('   3. Check your environment variables');
     console.error('');
     process.exit(1);
   }

@@ -34,7 +34,7 @@ const EmailLogSchema = new Schema<IEmailLog>(
       required: true,
       index: true,
     },
-    scheduledAt: { type: Date, index: true },
+    scheduledAt: { type: Date }, // Removed index: true to avoid duplicate
     sentAt: { type: Date },
     error: { type: String },
     metadata: {
@@ -48,7 +48,7 @@ const EmailLogSchema = new Schema<IEmailLog>(
 
 EmailLogSchema.index({ userId: 1, status: 1 });
 EmailLogSchema.index({ campaignId: 1 });
-EmailLogSchema.index({ scheduledAt: 1 });
+EmailLogSchema.index({ scheduledAt: 1 }); // Single index definition
 
 export const EmailLog = mongoose.model<IEmailLog>('EmailLog', EmailLogSchema);
 
