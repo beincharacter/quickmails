@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Login } from './components/Login';
+import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { Dashboard } from './components/Dashboard';
 import { Datasets } from './components/Datasets';
 import { Templates } from './components/Templates';
@@ -114,6 +115,10 @@ function AppContent() {
             <Navigate to="/dashboard" replace />
           )
         }
+      />
+      <Route
+        path="/privacy-policy"
+        element={<PrivacyPolicy />}
       />
       {isAuthenticated ? (
         <Route

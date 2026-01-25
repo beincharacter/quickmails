@@ -52,7 +52,7 @@ export const Layout = ({ children, user, onSignOut }: LayoutProps) => {
                   )}
                 </svg>
               </button>
-              <h1 className="text-xl font-bold text-gray-900">Email Sender</h1>
+              <h1 className="text-xl font-bold text-gray-900">MailPilot</h1>
             </div>
             <div className="flex items-center gap-2 sm:gap-4">
               <div className="hidden sm:flex items-center text-sm text-gray-600">
