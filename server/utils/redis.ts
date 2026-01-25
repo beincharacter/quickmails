@@ -7,14 +7,27 @@ export async function connectRedis(): Promise<Redis> {
     return redisClient;
   }
 
+  // Check if Redis is configured
+  const hasRedisConfig = !!(process.env.REDIS_URL || process.env.REDIS_HOST);
+  
+  if (!hasRedisConfig) {
+    throw new Error('Redis not configured. Set REDIS_URL or REDIS_HOST environment variable.');
+  }
+
   // Support REDIS_URL format (e.g., from Upstash: redis://default:password@host:port)
   const commonOptions = {
     maxRetriesPerRequest: null,
     retryStrategy: (times: number) => {
+      // Stop retrying after 5 attempts to prevent log spam
+      if (times > 5) {
+        return null; // Stop retrying
+      }
       const delay = Math.min(times * 50, 2000);
       return delay;
     },
     lazyConnect: true,
+    enableOfflineQueue: false, // Don't queue commands when disconnected
+    connectTimeout: 5000, // 5 second timeout
   };
 
   let redis: Redis;
@@ -32,21 +45,33 @@ export async function connectRedis(): Promise<Redis> {
     });
   }
 
+  // Track if we've logged the initial error to prevent spam
+  let hasLoggedError = false;
+
   // Handle connection events
   redis.on('connect', () => {
     console.log('✅ Redis: Connecting...');
+    hasLoggedError = false; // Reset on successful connection
   });
 
   redis.on('ready', () => {
     console.log('✅ Redis: Connected and ready');
+    hasLoggedError = false;
   });
 
   redis.on('error', (error) => {
-    console.error('❌ Redis connection error:', error.message);
+    // Only log error once to prevent spam
+    if (!hasLoggedError) {
+      console.error('❌ Redis connection error:', error.message);
+      hasLoggedError = true;
+    }
   });
 
   redis.on('close', () => {
-    console.log('⚠️ Redis: Connection closed');
+    // Only log close once to prevent spam
+    if (!hasLoggedError) {
+      console.log('⚠️ Redis: Connection closed');
+    }
   });
 
   try {

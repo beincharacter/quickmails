@@ -51,6 +51,26 @@
 3. Connect MongoDB Atlas
 4. Connect Upstash Redis
 
+**Render Backend Configuration:**
+- **Service Type**: Web Service
+- **Build Command**: `cd server && npm install && npm run build`
+- **Start Command**: `cd server && npm start` ⚠️ **IMPORTANT: Use `npm start`, NOT `npm run dev`**
+- **Environment**: Node.js
+- **Root Directory**: Leave empty (or set to repository root)
+
+**Render Frontend Configuration:**
+- **Service Type**: Static Site ⚠️ **IMPORTANT: Use Static Site, NOT Web Service**
+- **Build Command**: `cd client && npm install && npm run build`
+- **Publish Directory**: `client/dist`
+- **Environment Variables** (set these in Render Static Site settings):
+  - `VITE_API_URL=https://quickmails-backend.onrender.com/api` ⚠️ **Replace with your actual backend URL**
+  
+  **Important Notes:**
+  - The backend URL is configured via `VITE_API_URL` environment variable (NOT hardcoded)
+  - This allows you to use different URLs for dev/staging/production
+  - The URL is embedded at **build time**, so you must set it before building
+  - If you change the backend URL, you need to rebuild the frontend
+
 **Cost**: $0-25/month (free tier + optional paid)
 
 ---
@@ -432,6 +452,16 @@ Before deploying:
 - Set `FRONTEND_URL` environment variable correctly
 - Verify frontend URL matches exactly
 - Check CORS settings in server code
+
+**Render Deployment Issues:**
+- **"tsx: not found" error**: Make sure Start Command is `cd server && npm start` (NOT `npm run dev`)
+- **Build fails**: Ensure Build Command is `cd server && npm install && npm run build`
+- **Port binding issues**: Render automatically sets PORT, ensure your code uses `process.env.PORT`
+- **Redis connection fails**: Server will start without Redis but email sending will be disabled
+- **Frontend shows "Build failed"**: Make sure frontend is deployed as **Static Site** (not Web Service)
+  - Static Site Build Command: `cd client && npm install && npm run build`
+  - Static Site Publish Directory: `client/dist`
+- **Redis connection spam in logs**: This is normal if Redis isn't configured. Configure Redis to stop the warnings.
 
 ---
 

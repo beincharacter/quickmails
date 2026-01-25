@@ -80,23 +80,33 @@ async function startServer() {
     let redisConnected = false;
     let schedulerInitialized = false;
     
-    try {
-      redisConnected = await checkRedisConnection();
-      if (redisConnected) {
-        // Initialize email scheduler
-        console.log('🔍 Initializing email scheduler...');
-        await initializeScheduler();
-        schedulerInitialized = true;
-      } else {
-        console.warn('⚠️  Redis is not available. Email scheduling will be disabled.');
-        console.warn('   To enable email sending, configure Redis:');
-        console.warn('   - Set REDIS_URL (for Upstash: redis://default:password@host:port)');
-        console.warn('   - Or set REDIS_HOST, REDIS_PORT, and REDIS_PASSWORD');
+    // Only attempt Redis connection if configured
+    const hasRedisConfig = !!(process.env.REDIS_URL || process.env.REDIS_HOST);
+    
+    if (hasRedisConfig) {
+      try {
+        redisConnected = await checkRedisConnection();
+        if (redisConnected) {
+          // Initialize email scheduler
+          console.log('🔍 Initializing email scheduler...');
+          await initializeScheduler();
+          schedulerInitialized = true;
+        } else {
+          console.warn('⚠️  Redis is not available. Email scheduling will be disabled.');
+          console.warn('   To enable email sending, configure Redis:');
+          console.warn('   - Set REDIS_URL (for Upstash: redis://default:password@host:port)');
+          console.warn('   - Or set REDIS_HOST, REDIS_PORT, and REDIS_PASSWORD');
+        }
+      } catch (redisError: any) {
+        // Only log once, then suppress further errors
+        console.warn('⚠️  Redis connection failed:', redisError.message);
+        console.warn('   Server will start without email scheduling capabilities.');
+        console.warn('   Configure Redis to enable email sending functionality.');
+        console.warn('   (Redis connection errors will be suppressed to reduce log noise)');
       }
-    } catch (redisError: any) {
-      console.warn('⚠️  Redis connection failed:', redisError.message);
-      console.warn('   Server will start without email scheduling capabilities.');
-      console.warn('   Configure Redis to enable email sending functionality.');
+    } else {
+      console.warn('⚠️  Redis not configured. Email scheduling will be disabled.');
+      console.warn('   To enable email sending, set REDIS_URL or REDIS_HOST environment variable.');
     }
 
     // Start HTTP server (always bind to PORT, even if Redis fails)
